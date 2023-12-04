@@ -36,7 +36,7 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 	# print(x0.shape," shape")
 	# print("Initial state of the agents: ", x0)
 	
-	u = np.zeros((nA*n_agents,2))
+	u = np.zeros((nA*n_agents,1))
 	# for i in range(nA):
 	# 	# u[i][0]=random.random()/100
 	# 	u = u.at[i,0].set(random.random()/100)
@@ -102,10 +102,10 @@ def ErgCover(pdf, n_agents, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=No
 		for som in range(nA):
 			if som>45:
 				u=u.at[som,0].set(0)
-				u=u.at[som,1].set(0)
+				# u=u.at[som,1].set(0)
 			else:
 				u = u.at[som,0].set(u[som+45][0])
-				u = u.at[som,1].set(u[som+45][1])
+				# u = u.at[som,1].set(u[som+45][1])
 
 
 		erg_calc.x0 = erg_calc.x0.at[0].set(erg_calc.fulltraj[-1][0])

@@ -32,7 +32,7 @@ def fDiffDrive(x0, u):
 	u = (w,a)
 	"""
 	u = jnp.tanh(u) #Limit the maximum velocity to 1
-	x = x0 + jnp.array([jnp.cos(x0[2])*jnp.abs(u[0]), jnp.sin(x0[2])*jnp.abs(u[0]), 10*u[1]])
+	x = x0 + jnp.array([jnp.cos(x0[2])*0.02, jnp.sin(x0[2])*0.02, 0.8*u[0]])
 
 	return x, x0
 
@@ -175,7 +175,7 @@ class ErgCalc(object):
 		
 		traj_cost = 0 
 		traj_cost += jnp.mean((jnp.array(trajectories) - jnp.array([0.5,0.5]))**8)
-		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) + 3e-2 * jnp.mean(u**2) + traj_cost
+		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) # + 3e-2 * jnp.mean(u**2) + traj_cost
 		print("Ergodicity: ", ergodicity)
 		print("len of traj: ", len(self.temptraj))
 		return ergodicity
