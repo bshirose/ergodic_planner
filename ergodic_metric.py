@@ -11,7 +11,6 @@ temptheta=0
 rob_vel = 0.8
 
 def wrapToPi(x):
-	# print("x!!!!!!!!!!!: ", x)	
 	if x > 3.14:
 		x = x - 2*3.14
 	elif x < -3.14:
@@ -44,16 +43,6 @@ def get_hk(k): # normalizing factor for basis function
 def fk(x, k): # basis function
     return jnp.prod(jnp.cos(x*k))
 
-# def GetTrajXY(u, x0):
-# 	"""
-# 	"""
-
-# 	xf, tr0 = scan(fDiffDrive, x0, u)
-# 	temptheta=tr0[tempvar*10][2]
-	
-# 	tr = tr0[:,0:2] # take the (x,y) part of all points
-# 	# print(len(tr), "   type of tr")
-# 	return xf, tr
 def GetTrajXY(u, x0):
 	"""
 	"""
@@ -116,6 +105,7 @@ class ErgCalc(object):
 		# to compute gradient func
 		self.gradient = jit(grad(self.fourier_ergodic_loss))
 		self.temptraj=[]
+		self.full_u=[]
 		self.fulltraj=[]
 		self.step=0
 		self.step_size=50
@@ -147,37 +137,13 @@ class ErgCalc(object):
 			trajectories.append(tr[k])
 		ck = self.get_ck(jnp.array(trajectories))
 		self.temptraj=trajectories
+		self.u=u
 
 		
 		traj_cost = 0 
 		# lambda, the weights of different bands.
 		traj_cost += jnp.mean((jnp.array(trajectories) - jnp.array([0.5,0.5]))**8)
 		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) + 3e-2 * jnp.mean(u**2) + traj_cost
-		print("Ergodicity: ", ergodicity)
-		print("len of traj: ", len(self.temptraj))
-		# print(self.temptraj[-1])
-		return ergodicity
-
-	def fourier_ergodic_lossbb(self, u, flag=False): 
-		ck = 0
-
-		trajectories=copy.copy(self.fulltraj)
-		x0_i=[0,0,0]
-		xf, tr,thet,full = GetTrajXY(u, x0_i,self.step)
-		self.temptehta=thet
-		for k in range(len(tr)):
-			trajectories.append(tr[k])
-		ck = self.get_ck(jnp.array(trajectories))
-
-		ck = ck / (self.n_agents)
-		self.temptraj=trajectories
-
-		
-		traj_cost = 0 
-		traj_cost += jnp.mean((jnp.array(trajectories) - jnp.array([0.5,0.5]))**8)
-		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) # + 3e-2 * jnp.mean(u**2) + traj_cost
-		print("Ergodicity: ", ergodicity)
-		print("len of traj: ", len(self.temptraj))
 		return ergodicity
 
 
@@ -188,12 +154,15 @@ class ErgCalc(object):
 
 		# for i in range(len(self.temptraj)):
 		self.fulltraj=[]
-		print(len(self.temptraj)," fcc")
+		# print(len(self.temptraj)," fcc")
 		if (flag):
+			for i in range(len(self.u)):
+				self.full_u.append(self.u[i])
 			for i in range(len(self.temptraj)):
 				self.fulltraj.append(self.temptraj[i])
 			return
-		
+		for i in range(self.step_size):
+			self.full_u.append(self.u[i])
 		for i in range(self.step_size*self.step):
 			a=max(self.temptraj[i][0],0)
 			a=min(self.temptraj[i][0],1)
