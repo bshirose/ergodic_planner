@@ -4,7 +4,7 @@ from jax import vmap, jit, grad
 # from jax.config import config; config.update("jax_enable_x64", True)
 
 import matplotlib.pyplot as plt
-import ergodic_metrictwo
+import ergodic_metric as ergodic_metric
 
 GLOBAL_NUM_K = 0
 
@@ -19,11 +19,11 @@ def ErgCover(pdf, n_agents,nS, nA, s0, n_fourier, nPix, nIter, u_init=None, grad
 	
 	
 	if direct_FC is not None:
-		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
+		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
 		erg_calc.phik = direct_FC
 		erg_calc.phik = erg_calc.phik/erg_calc.phik[0]
 	else:
-		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
+		erg_calc = ergodic_metric.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 

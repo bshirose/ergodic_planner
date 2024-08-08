@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from ergodic_coveragetwo import ErgCover
+from ergodic_coverage import ErgCover
 import jax.numpy as op
 import pickle
 import numpy as np
