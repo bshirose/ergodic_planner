@@ -1,4 +1,3 @@
-import numpy as onp
 import jax.numpy as np
 from jax.experimental import optimizers
 import random
@@ -7,26 +6,25 @@ from jax import vmap, jit, grad
 
 import matplotlib.pyplot as plt
 import ergodic_metrictwo
-from scipy.optimize import minimize
 
 GLOBAL_NUM_K = 0
 
-def ErgCover(pdf, n_agents,nS, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init=None, stop_eps=-1, kkk=0,grad_criterion=False,direct_FC=None):
+def ErgCover(pdf, n_agents,nS, nA, s0, n_fourier, nPix, nIter, u_init=None, grad_criterion=False,direct_FC=None, stepize=50):
 	"""
 	run ergodic coverage over a info map. Modified from Ian's code.
 	return a list of control inputs.
 	"""
-	step_size=50
+	step_size=stepize
 	# print("****************************************************************")
 	# print("[INFO] ErgCover, nA =", nA, " s0 =", s0, " n_fourier =", n_fourier, " stop_eps =", stop_eps)
 	
 	
 	if direct_FC is not None:
-		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix)
+		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
 		erg_calc.phik = direct_FC
 		erg_calc.phik = erg_calc.phik/erg_calc.phik[0]
 	else:
-		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix)
+		erg_calc = ergodic_metrictwo.ErgCalc(pdf, n_agents, 1000, n_fourier, nPix,step_size)
 
 	opt_init, opt_update, get_params = optimizers.adam(1e-3) #Declaring Adam's optimizer
 
@@ -62,7 +60,6 @@ def ErgCover(pdf, n_agents,nS, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init
 			# 		break
 		
 		t=False
-		# if abs(e-erg_calc.fourier_ergodic_loss(u))<0.0002:
 
 		e=erg_calc.fourier_ergodic_loss(u)
 
@@ -80,9 +77,6 @@ def ErgCover(pdf, n_agents,nS, nA, s0, n_fourier, nPix, nIter, ifDisplay, u_init
 			erg_calc.x0 = erg_calc.x0.at[2*i+1].set(erg_calc.fulltraj[-1][2*i+1])
 
 		# print(erg_calc.x0," x0")
-
-
-
 
 
 	tr=erg_calc.fulltraj

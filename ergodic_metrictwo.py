@@ -5,71 +5,18 @@ from jax.lax import scan
 import copy
 # from jax.config import config; config.update("jax_enable_x64", True)
 from functools import partial
-step_size=50
-tempvar=1
-temptheta=0
-rob_vel = 0.8
-
-def wrapToPi(x):
-	if x > 3.14:
-		x = x - 2*3.14
-	elif x < -3.14:
-		x = x + 2*3.14
-	return x
-
-def fDyn(x, u): # dynamics of the robot - point mass
-	xnew = x + jnp.array([jnp.tanh(u[0]),jnp.tanh(u[0]),10*u[1]])
-	# xnew = x + jnp.array([0.8,0.8,10*u[1]])
-	return xnew, x
-
-def fDiffDrive(x0, u):
-	"""
-	x0 = (x,y,theta)
-	u = (v,w)
-
-	x0 = (x,y,theta,v)
-	u = (w,a)
-	"""
-	u = jnp.tanh(u) #Limit the maximum velocity to 1
-	x = x0 + jnp.array(u)
-	# x = x0 + jnp.array([jnp.cos(x0[2])*0.02, jnp.sin(x0[2])*0.02, 0.8*u[0]])
-
-	return x, x0
-
-def get_hk(k): # normalizing factor for basis function
-	_hk = jnp.array((2. * k + np.sin(2 * k))/(4. * k))
-	_hk = _hk.at[np.isnan(_hk)].set(1.)	
-	return np.sqrt(np.prod(_hk))
-
-def fk(x, k): # basis function
-    return jnp.prod(jnp.cos(x*k))
-
-def GetTrajXY(u, x0):
-	"""
-	"""
-
-	xf, tr0 = scan(fDiffDrive, x0, u)
-	# some=tr0[step_size-1][2]
-
-	# tr = tr0[:,0:2] # take the (x,y) part of all points
-	return xf, tr0
-
-def GetTrajXYTheta(u,x0):
-	xf, tr = scan(fDiffDrive, x0, u)
-	return xf, tr
-
 
 class ErgCalc(object):
 	"""
 	modified from Ian's Ergodic Coverage code base.
 	"""
-	def __init__(self, pdf, n_agents, nA, n_fourier, nPix):
+	def __init__(self, pdf, n_agents, nA, n_fourier, nPix,ste_size):
 		# print("Number of agents: ", n_agents)
 		self.n_agents = n_agents
 		self.nPix = nPix
 		self.nA = nA
 		# aux func
-		self.fk_vmap = lambda _x, _k: vmap(fk, in_axes=(0,None))(_x, _k)
+		self.fk_vmap = lambda _x, _k: vmap(self.fk, in_axes=(0,None))(_x, _k)
 		self.x0=jnp.array(())
 
 		# fourier indices
@@ -83,7 +30,7 @@ class ErgCalc(object):
 		# the normalization factor
 		hk = []
 		for ki in k:
-			hk.append(get_hk(ki))
+			hk.append(self.get_hk(ki))
 		self.hk = jnp.array(hk)
 
 		# compute phik
@@ -109,11 +56,54 @@ class ErgCalc(object):
 		self.full_u=[]
 		self.fulltraj=[]
 		self.step=0
-		self.step_size=50
+		self.step_size=ste_size
 		self.precau=[]
 
 		return
-	
+	def wrapToPi(self,x):
+		if x > 3.14:
+			x = x - 2*3.14
+		elif x < -3.14:
+			x = x + 2*3.14
+		return x
+
+	def fDyn(self,x, u): # dynamics of the robot - point mass
+		xnew = x + jnp.array([jnp.tanh(u[0]),jnp.tanh(u[0]),10*u[1]])
+		# xnew = x + jnp.array([0.8,0.8,10*u[1]])
+		return xnew, x
+
+	def fDiffDrive(self,x0, u):
+		"""
+		x0 = (x,y,theta)
+		u = (v,w)
+
+		xdot = u
+		"""
+		u = jnp.tanh(u) #Limit the maximum velocity to 1
+		x = x0 + jnp.array(u)
+		# x = x0 + jnp.array([jnp.cos(x0[2])*0.02, jnp.sin(x0[2])*0.02, 0.8*u[0]])
+
+		return x, x0
+
+	def get_hk(self,k): # normalizing factor for basis function
+		_hk = jnp.array((2. * k + np.sin(2 * k))/(4. * k))
+		_hk = _hk.at[np.isnan(_hk)].set(1.)	
+		return np.sqrt(np.prod(_hk))
+
+	def fk(self,x, k): # basis function
+		return jnp.prod(jnp.cos(x*k))
+
+	def GetTrajXY(self,u, x0):
+		"""
+		"""
+		xf, tr0 = scan(self.fDiffDrive, x0, u)
+		# some=tr0[step_size-1][2]
+		# tr = tr0[:,0:2] # take the (x,y) part of all points
+		return xf, tr0
+
+	def GetTrajXYTheta(self,u,x0):
+		xf, tr = scan(self.fDiffDrive, x0, u)
+		return xf, tr
 	def get_recon(self, FC):
 		X,Y = jnp.meshgrid(*[jnp.linspace(0,1,num=self.nPix)]*2)
 		_s = jnp.stack([X.ravel(), Y.ravel()]).T
@@ -132,7 +122,7 @@ class ErgCalc(object):
 		ck = 0
 		trajectories=copy.copy(self.fulltraj)
 		x0_i=self.x0
-		xf, tr = GetTrajXY(u, x0_i)
+		xf, tr = self.GetTrajXY(u, x0_i)
 		# self.temptehta=thet
 		traj_cost=0
 		for k in range(len(tr)):
@@ -152,11 +142,7 @@ class ErgCalc(object):
 
 	def trajstep(self,flag):
 		self.step+=1
-		# tempvar=tempvar+1
-
-		# for i in range(len(self.temptraj)):
 		self.fulltraj=[]
-		# print(len(self.temptraj)," fcc")
 		if (flag):
 			for i in range(len(self.u)):
 				self.full_u.append(self.u[i])
@@ -203,7 +189,7 @@ class ErgCalc(object):
 	def traj_stat(self, u, x0):
 		"""
 		"""
-		xf, tr = GetTrajXY(u, x0)
+		xf, tr = self.GetTrajXY(u, x0)
 		ck = self.get_ck(tr)
 		X,Y = jnp.meshgrid(*[jnp.linspace(0,1,num=self.nPix)]*2)
 		_s = jnp.stack([X.ravel(), Y.ravel()]).T
