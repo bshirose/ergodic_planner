@@ -1,6 +1,5 @@
 import jax.numpy as np
 from jax.experimental import optimizers
-import random
 from jax import vmap, jit, grad
 # from jax.config import config; config.update("jax_enable_x64", True)
 
