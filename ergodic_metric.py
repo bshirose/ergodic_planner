@@ -135,6 +135,7 @@ class ErgCalc(object):
 			ck+=self.get_ck(trajectories[:,2*i:i*2+2])
 			traj_cost += jnp.mean((jnp.array(trajectories[:,2*i:i*2+2]) - jnp.array([0.5,0.5]))**8)
 		self.temptraj=trajectories
+		ck = ck/self.n_agents
 		ergodicity = jnp.sum(self.lamk*jnp.square(self.phik - ck)) + 3e-2 * jnp.mean(u**2) + traj_cost
 		return ergodicity
 
